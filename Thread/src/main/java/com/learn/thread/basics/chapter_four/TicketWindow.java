@@ -1,4 +1,4 @@
-package com.learn.thread.basics.chapterFour;
+package com.learn.thread.basics.chapter_four;
 
 public class TicketWindow extends Thread{
 

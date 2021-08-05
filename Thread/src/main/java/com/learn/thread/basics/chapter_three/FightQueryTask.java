@@ -1,4 +1,4 @@
-package com.learn.thread.basics.chapterThree;
+package com.learn.thread.basics.chapter_three;
 
 import java.util.ArrayList;
 import java.util.List;

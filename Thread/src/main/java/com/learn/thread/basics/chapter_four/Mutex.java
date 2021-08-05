@@ -1,4 +1,4 @@
-package com.learn.thread.basics.chapterFour;
+package com.learn.thread.basics.chapter_four;
 
 import java.util.concurrent.TimeUnit;
 
