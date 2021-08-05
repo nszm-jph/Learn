@@ -21,10 +21,17 @@ public class BooleanLockTest {
         }
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
         BooleanLockTest booleanLockTest = new BooleanLockTest();
 
-        IntStream.range(0, 10).mapToObj(i -> new Thread(booleanLockTest::syncMethod))
-                .forEach(Thread::start);
+//        IntStream.range(0, 10).mapToObj(i -> new Thread(booleanLockTest::syncMethod))
+//                .forEach(Thread::start);
+        new Thread(booleanLockTest::syncMethod).start();
+        TimeUnit.MILLISECONDS.sleep(2);
+
+        Thread t1 = new Thread(booleanLockTest::syncMethod);
+        t1.start();
+        TimeUnit.MILLISECONDS.sleep(10);
+        t1.interrupt();
     }
 }

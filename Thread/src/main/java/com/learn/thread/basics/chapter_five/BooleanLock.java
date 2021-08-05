@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.concurrent.TimeoutException;
 
 import static java.lang.System.currentTimeMillis;
+import static java.lang.System.in;
 
 public class BooleanLock implements Lock{
 
@@ -19,8 +20,16 @@ public class BooleanLock implements Lock{
     public void lock() throws InterruptedException {
         synchronized (this) {
             while (locked) {
-                blockedList.add(Thread.currentThread());
-                this.wait();
+                try {
+                    if(!blockedList.contains(Thread.currentThread())) {
+                        blockedList.add(Thread.currentThread());
+                    }
+                    this.wait();
+                } catch (InterruptedException interruptedException) {
+                    blockedList.remove(Thread.currentThread());
+                    throw interruptedException;
+                }
+
             }
             blockedList.remove(Thread.currentThread());
             this.locked = true;
