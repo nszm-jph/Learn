@@ -26,6 +26,7 @@ public class BooleanLock implements Lock{
                     }
                     this.wait();
                 } catch (InterruptedException interruptedException) {
+                    // 线程被中断时，移除相应线程，防止内存溢出
                     blockedList.remove(Thread.currentThread());
                     throw interruptedException;
                 }

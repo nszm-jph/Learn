@@ -1,3 +1,221 @@
+## 三、Thread API的详细介绍
+
+### 3.1 线程sleep
+
+sleep 方法会使当前线程进入指定毫秒数的休眠，暂停执行，虽然给定了一个休眠的时间， 但是最终要以系统的定时器和调度器的精度为准， 休眠有一个非常重要的特性，那就是其不会放弃monitor 锁的所有权
+
+### 3.2 线程yield
+
+yield 方法属于一种启发式的方法，其会提醒调度器我愿意放弃当前的CPU 资源，如果CPU 的资源不紧张，则会忽略这种提醒；
+
+调用yield 方法会使当前线程从RUNNING 状态切换到RUNNABLE 状态；（如果CPU 调度器没有忽略这个提示的话）
+
+### 3.3 设置线程的优先级
+
+如果CPU 比较忙， 设置优先级可能会获得更多的CPU 时间片，但是闲时优先级的高低几乎不会有任何作用；
+
+线程的优先级不能小于l 也不能大于10；
+
+如果指定的线程优先级大于线程所在group 的优先级，那么指定的优先级将会失效，取而代之的是group 的最大优先级；
+
+### 3.6 设置线程上下文类加载器
+
+`public ClassLoader getContextClassLoader() `获取线程上下文的类加载器，简单来说就是这个线程是由哪个类加器加载的，如果是在没有修改线程上下文类加载器的情况下， 则保持与父线程同样的类加载器；
+
+`public void setContextClassLoader(ClassLoader c1) `设置该线程的类加载器，这个方法可以打破JAVA 类加载器的父委托机制，有时候该方法也被称为JAVA 类加载器的后门
+
+### 3.7 线程interrupt
+
+#### 3.7.1 interrupt
+
+如下方法的调用会使得当前线程进入阻塞状态，而调用当前线程的interrupt 方法，就可以打断阻塞：
+
+- Object 的wait 方法
+- Thread 的sleep(long）方法
+- Thread 的join 方法
+- InterruptibleChannel 的io操作
+- Selector 的wakeup 方法
+
+一旦线程在阻塞的情况下被打断，都会抛出一个称为Interrupted Exception 的异常
+
+#### 3.7.2 islnterrupted
+
+判断当前线程是否被中断，该方法仅仅是对interrupt 标识的一个判断，并不会影响标识发生任何改变
+
+```java
+package com.learn.thread.basics.chapter_three;
+
+import java.util.concurrent.TimeUnit;
+
+public class ThreadisInterrupted {
+    public static void main(String[] args) throws InterruptedException {
+        Thread thread1 = new Thread() {
+            @Override
+            public void run () {
+                while (true) {
+
+                }
+            }
+        };
+
+        thread1.setDaemon(true);
+        thread1.start();
+        TimeUnit.MILLISECONDS.sleep(2);
+        System.out.printf("Thread is interrupted? %s \n", thread1.isInterrupted());
+        thread1.interrupt();
+        TimeUnit.MILLISECONDS.sleep(2);
+        System.out.printf("Thread is interrupted? %s \n", thread1.isInterrupted());
+
+        Thread thread2 = new Thread() {
+            @Override
+            public void run () {
+                while (true) {
+                    try {
+                        TimeUnit.MINUTES.sleep(2);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        };
+
+        thread2.setDaemon(true);
+        thread2.start();
+        TimeUnit.MILLISECONDS.sleep(2);
+        System.out.printf("Thread is interrupted? %s \n", thread2.isInterrupted());
+        thread2.interrupt();
+        TimeUnit.MILLISECONDS.sleep(2);
+        System.out.printf("Thread is interrupted? %s \n", thread2.isInterrupted());
+    }
+}
+```
+
+thread2由于在run 方法中使用了sleap 这个可中断方法，它会捕获到中断信号，并且会擦除interrupt 标识，因此程序的执行结果都会是false;
+
+可中断方法捕获到了中断信号之后，为了不影响线程中其他方法的执行，将线程的interrupt 标识复位是一种很合理的设计;
+
+#### 3.7.3 interrupted
+
+interrupted 是一个静态方法，虽然其也用于判断当前线程是否被中断，调用该方法会直接擦除掉线程的interrupt 标识，需要注意的是，如果当前线程被打断了，那么第一次调用interrupted 方法会返回true ， 并且立即擦除了interrupt 标识；第二次包括以后的调用永远都会返回false ，除非在此期间线程又一次地被打断；
+
+如果一个线程在没有执行可中断方法之前就被打断，那么其接下来将执行可中断方法，可中断方法会立即中断；
+
+### 3.8 线程join
+
+join 某个线程A ， 会使当前线程B 进入等待， 直到线程A 结束生命周期，或者到达给定的时间，那么在此期间B 线程是处于BLOCKED 的，而不是A 线程
+
+#### 3.8.2 join 万法结合实战
+
+FightQuery：不管是Thread 的run 方法，还是Runnable 接口， 都是void 返回类型，如果你想通过某个线程的运行得到结果，就需要自己定义一个返回的接口
+
+```java
+package com.learn.thread.basics.chapter_three;
+
+import java.util.List;
+
+public interface FightQuery {
+    List<String> get();
+}
+```
+
+FightQueryTask：其实就是一个线程的子类，主要用于到各大航空公司获取数据
+
+```java
+package com.learn.thread.basics.chapter_three;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
+
+public class FightQueryTask extends Thread implements FightQuery {
+
+    private final String origin;
+    private final String destination;
+    private final List<String> flightList =new ArrayList<>();
+
+    public FightQueryTask(String airline, String origin, String destination) {
+        super("[" + airline + "]");
+        this.origin = origin;
+        this.destination = destination;
+    }
+
+    @Override
+    public void run() {
+        System.out.printf("%s-query from %s to %s \n", getName(), origin,
+                destination);
+        int randomVal = ThreadLocalRandom.current().nextInt(10);
+        try {
+            TimeUnit.SECONDS.sleep(randomVal);
+            this.flightList.add(getName() + "-" + randomVal);
+            System.out.printf ("The Fight: %s list query successful \n", getName());
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public List<String> get() {
+        return this.flightList;
+    }
+}
+```
+
+
+
+```java
+package com.learn.thread.basics.chapter_three;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+
+public class FightQueryExample {
+    private static final List<String> FIGHT_COMPANY = Arrays.asList("CSA", "CEA", "HNA");
+
+    public static void main(String[] args) {
+        List<String> results = search("SH", "BJ");
+        System.out.println("===============result================");
+        results.forEach(System.out::println);
+    }
+
+    private static List<String> search(String original, String dest) {
+        final List<String> result = new ArrayList<>();
+
+        List<FightQueryTask> tasks = FIGHT_COMPANY.stream()
+                .map(f -> createSearchTask(f, original, dest))
+                .collect(Collectors.toList());
+
+        tasks.forEach(Thread::start);
+
+        tasks.forEach(t ->
+        {
+            try {
+                t.join();
+            } catch (InterruptedException e) {
+            }
+        });
+
+        tasks.stream().map(FightQueryTask::get).forEach(result::addAll);
+
+        return result;
+    }
+
+    private static FightQueryTask createSearchTask(String fight, String original, String dest) {
+        return new FightQueryTask(fight, original, dest);
+    }
+}
+```
+
+### 3.9 如何关闭一个线程
+
+1. 线程结束生命周期正常结束
+2. 捕获中断信号关闭线程
+3. 使用volatile 开关控制
+
+
+
 ## 四、线程安全与数据同步
 
 ### 4.3.3 使用synchronized 需要注意的问题
@@ -212,3 +430,122 @@ public class EventClient {
 3. 被唤醒的线程需要重新获取对该对象所关联monitor的lock才能继续执行；
 
 ### 5.3 多线程间通信
+
+多线程间通信需要用到Object 的notifyAll 方法，无法保证唤醒的是什么线程，可能导致`Linkedlist` 为空时执行`removeFirst`方法、`Linkedlist` 元素为10 时执行`addLast` 方法
+
+### 5.4 自定义显式锁BooleanLock
+
+`synchronized `关键字提供了一种排他式的数据同步机制，而这种阻塞有两个很明显的缺陷：
+
+1.无法控制阻塞时长;
+
+2.阻塞不可被中断;
+
+构造一个显式的`BooleanLock` ，使其在具备`synchronized`关键字所有功能的同时·又具备可中断和lock 超时的功能
+
+Lock接口：
+
+```java
+package com.learn.thread.basics.chapter_five;
+
+import java.util.List;
+import java.util.concurrent.TimeoutException;
+
+public interface Lock {
+
+    void lock() throws InterruptedException;
+
+    void lock(long mills) throws InterruptedException, TimeoutException;
+
+    void unlock();
+
+    List<Thread> getBlockedThreads();
+}
+```
+
+BooleanLock：
+
+```java
+package com.learn.thread.basics.chapter_five;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.TimeoutException;
+
+import static java.lang.System.currentTimeMillis;
+import static java.lang.System.in;
+
+public class BooleanLock implements Lock{
+
+    private Thread currentThread;
+
+    private boolean locked = false;
+
+    private final List<Thread> blockedList = new ArrayList<>();
+
+    @Override
+    public void lock() throws InterruptedException {
+        synchronized (this) {
+            while (locked) {
+                try {
+                    if(!blockedList.contains(Thread.currentThread())) {
+                        blockedList.add(Thread.currentThread());
+                    }
+                    this.wait();
+                } catch (InterruptedException interruptedException) {
+                    // 线程被中断时，移除相应线程，防止内存溢出
+                    blockedList.remove(Thread.currentThread());
+                    throw interruptedException;
+                }
+
+            }
+            blockedList.remove(Thread.currentThread());
+            this.locked = true;
+            this.currentThread = Thread.currentThread();
+        }
+    }
+
+    @Override
+    public void lock(long mills) throws InterruptedException, TimeoutException {
+        synchronized (this) {
+            if (mills < 0) {
+                this.lock();
+            }
+            else {
+                long remainingMills = mills;
+                long endMills = currentTimeMillis() + remainingMills;
+                while (locked) {
+                    if (remainingMills < 0) {
+                        throw new TimeoutException ("can not get the lock during " + mills);
+                    }
+                    if (!blockedList.contains(Thread.currentThread())) {
+                        blockedList.add(Thread.currentThread());
+                    }
+                    this.wait(remainingMills);
+                    remainingMills = endMills - currentTimeMillis();
+                }
+                blockedList.remove(Thread.currentThread());
+                this.locked = true;
+                this.currentThread = Thread.currentThread();
+            }
+        }
+    }
+
+    @Override
+    public void unlock() {
+        synchronized (this) {
+            if (currentThread == Thread.currentThread()) {
+                this.locked = false;
+                this.notifyAll();
+            }
+        }
+    }
+
+    @Override
+    public List<Thread> getBlockedThreads() {
+        return Collections.unmodifiableList(blockedList);
+    }
+}
+```
+
