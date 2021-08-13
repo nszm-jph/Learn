@@ -549,3 +549,261 @@ public class BooleanLock implements Lock{
 }
 ```
 
+## 六、ThreadGroup 详细讲解
+
+### 6.2 创建Thread Group
+
+`public ThreadGroup(String name)`
+`public ThreadGroup(ThreadGroup parent,String name)`
+
+第一个构造函数为`ThreadGroup` 赋予了名字， 但是该`ThreadGroup` 的父`ThreadGroup`是创建它的线程所在的`ThreadGroup`； 第二个`ThreadGroup`的构造函数赋予group 名字的同时又显式地指定了父Group ；
+
+### 6.3 复制Thread 数组和ThreadGroup 数组
+
+#### 6.3.1 复制Thread 数组
+
+`public int enumerate(Thread[] list)`
+
+`public int enumerate(Thread[] list,boolean recurse)`
+
+上述两个方法，会将Thread Group 中的active 线程全部复制到Thread 数组中，其中recurse 参数如果为true ， 则该方法会将所有子group 中的active线程都递归到Thread 数组中， enumerate ( Thread[] list ）实际上等价于enumerate (Thread[] true )；
+
+```java
+package com.learn.thread.basics.chapter_six;
+
+import java.util.Arrays;
+import java.util.concurrent.TimeUnit;
+
+public class ThreadGroupEnumerateThreads {
+
+    public static void main(String[] args) {
+        ThreadGroup threadGroup = new ThreadGroup("threadGroup");
+
+        Thread thread = new Thread(threadGroup, () -> {
+            while (true) {
+                try {
+                    TimeUnit.SECONDS.sleep(1);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }, "MyThread");
+        thread.start();
+
+        ThreadGroup mainGroup = Thread.currentThread().getThreadGroup();
+        Thread[] threads = new Thread[mainGroup.activeCount()];
+        System.out.println(mainGroup.enumerate(threads));
+        Arrays.stream(threads).forEach(System.out::println);
+
+        System.out.println(mainGroup.enumerate(threads, false));
+    }
+}
+```
+
+#### 6.3.2 复制ThreadGroup 数组
+
+`public int enumerate(ThreadGroup[) list)`
+`public int enume rate(ThreadGroup[] list,boolean recurse)`
+
+和复制Thread 数组类似，上述两个方法，主要用于复制当前`ThreadGroup` 的子Group,同样recurs 巳会决定是否以递归的方式复制；
+
+### 6.4 ThreadGroup 操作
+
+#### 6.4.1 ThreadGroup 的基本操作
+
+1. `activeCoun()`用于获取group 中活跃的线程，这只是个估计值，并不能百分之百地保证数字一定正确， 原因前面已经分析过，该方法会递归获取其他子group 中的活跃线程;
+
+2. `activeGroupCount()`用于获取group 中活跃的子group ，这也是一个近似估值，该方法也会递归获取所有的子group;
+
+3. `getMaxPriority()`用于获取group 的优先级， 默认情况下， Group 的优先级为10 ，在该group 中，所有线程的优先级都不能大于group 的优先级;
+
+4. `getName()`用于获取group的名字;
+
+5. `getParent()`用于获取group 的父group ，如果父group不存在， 则会返回null ，比如system group 的父group 就为null ;
+
+6. `list()`该方法没有返回值，执行该方法会将group 中所有的活跃线程信息全部输出到控制台， 也就是`System.out` ;
+
+7. `parentOf (ThreadGroup g )`会判断当前group 是不是给定group 的父group ，另外如果给定的group 就是自己本身， 那么该方法也会返回true
+
+8. `setMaxPriority(int pri)`会指定group 的最大优先级， 最大优先级不能超过父group的最大优先级，执行该方法不仅会改变当前group 的最大优先级，还会改变所有子group 的最大优先级;
+
+   ```java
+   // 通过设置组的优先级，可以让组中的现有线程的优先级大于组的优先级;
+   // 但是后面加入该group 的线程再不会大于新设置的值;
+   System.out.println(threadGroup.getMaxPriority());
+   System.out.println(thread.getPriority());
+   threadGroup.setMaxPriority(3);
+   System.out.println(threadGroup.getMaxPriority());
+   System.out.println(thread.getPriority());
+   ```
+
+#### 6.4.2 ThreadGroup 的interrupt
+
+interrupt 一个thread group 会导致该group 中所有的active 线程都被interrupt 
+
+#### 6.4.3 ThreadGroup 的destroy
+
+destroy 用于销毁Thread Group ， 该方法只是针对一个没有任何active线程的group 进行一次destroy标记，调用该方法的直接结果是在父group 中将自己移除
+
+#### 6.4.4 守护ThreadGroup
+
+线程可以设置为守护线程， ThreadGroup 也可以设置为守护ThreadGroup，但是若将一个ThreadGroup设置为daemon ，也并不会影响线程的daemon 属性，如果一个Thread Group 的daemon 被设置为true ，那么在group 中没有任何active 线程的时候该group将自动destroy
+
+## 七、Hook 线程以及捕获线程执行异常
+
+### 7.1 获取线程运行时异常
+
+1. `public void setUncaughtExceptionHandler(UncaughtExceptionHandler eh)`：为某个特定线程指定`UncaughtExceptionHandler`
+2. `public static void setDefaultUncaughtExceptionHandler(UncaughtExceptionHandler eh)`：设置全局的`UncaughtExceptionHandler`
+3. `public UncaughtExceptionHandler getUncaughtExceptionHandler()`：获取特定线程的`UncaughtExceptionHandler`
+4. `public static UncaughtExceptionHandler getDefaultUncaughtExceptionHandler()`：获取全局的`UncaughtExceptionHandler`
+
+#### 7.1.1 UncaughtExceptionHandler的介绍
+
+当线程在运行过程中出现异常时，会回调`UncaughtExceptionHandler`接口，从而得知是哪个线程在运行时出错，`UncaughtExceptionHandler `是一个`Functionallnterface `，只有一个抽象方法，该回调接口会被Thread 中的`dispatchUncaughtException `方法调用
+
+```java
+package com.learn.thread.basics.chapter_seven;
+
+import java.util.concurrent.TimeUnit;
+
+public class CaptureThreadException {
+    public static void main(String[] args) {
+        Thread.setDefaultUncaughtExceptionHandler((t, e) -> {
+            System.out.println(t.getName() + " occur exception");
+            e.printStackTrace();
+        });
+
+        Thread thread = new Thread(() -> {
+            try {
+                TimeUnit.SECONDS.sleep(2);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            System.out.println(1 / 0);
+        }, "Test-Thread");
+
+        thread.start();
+    }
+}
+```
+
+### 7.2 注人钩子线程
+
+#### 7.2.1 Hook 线程介绍
+
+JVM 进程的退出是由于JVM 进程中没有活跃的非守护线程，或者收到了系统中断信号，向JVM 程序注入一个Hook 线程，在JVM 进程退出的时候， Hook 线程会启动执行，通过Runtime 可以为JVM 注入多个Hook 线程
+
+```java
+package com.learn.thread.basics.chapter_seven;
+
+import java.util.concurrent.TimeUnit;
+
+public class ThreadHook {
+    public static void main(String[] args) {
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            try {
+                System.out.println("The hook thread 1 is running .");
+                TimeUnit.SECONDS.sleep(1);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            System.out.println("The hook thread 1 will exit .");
+        }));
+
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            try {
+                System.out.println("The hook thread 2 is running .");
+                TimeUnit.SECONDS.sleep(1);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            System.out.println("The hook thread 2 will exit .");
+        }));
+
+        System.out.println("The program will is stopping .");
+    }
+}
+```
+
+#### 7.2.2 Hook 线程实战
+
+在我们的开发中经常会遇到Hook 线程，比如为了防止某个程序被重复启动，在进程启动时会创建一个lock 文件，进程收到中断信号的时候会删除这个lock 文件，我们在mysql服务器、zoo keeper 、kafka 等系统中都能看到lock 文件的存在，本节中，将利用hook 线程的特点，模拟一个防止重复启动的程序;
+
+```java
+package com.learn.thread.basics.chapter_seven;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.concurrent.TimeUnit;
+
+public class PreventDuplicated {
+    private final static String LOCK_PATH = ".\\";
+
+    private final static String LOCK_FILE = ".lock";
+
+    private static void checkRunning() throws IOException {
+        Path lockFile = getLockFile();
+
+        if (lockFile.toFile().exists()) {
+            throw new RuntimeException("The program already running .");
+        }
+
+        Files.createFile(lockFile);
+    }
+
+    private static Path getLockFile() {
+        return Paths.get(LOCK_PATH, LOCK_FILE);
+    }
+
+    public static void main(String[] args) throws IOException {
+        checkRunning();
+
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            System.out.println("The program received kill SIGNAL.");
+            getLockFile().toFile().delete();
+        }));
+
+        while (true) {
+            try {
+                TimeUnit.SECONDS.sleep(1);
+                System.out.println("program is running.");
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}
+```
+
+#### 7.2.3 Hook 线程应用场景以及注意事项
+
+1. Hook 线程只有在收到退出信号的时候会被执行，如果在kill 的时候使用了参数－9,那么Hook 线程不会得到执行，进程将会立即退出， 因此.lock 文件将得不到清理；
+2. Hook 线程中也可以执行一些资源释放的工作， 比如关闭文件句柄、socket 链接、数据库connection 等；
+3. 尽量不要在Hook 线程中执行一些耗时非常长的操作，因为其会导致程序迟迟不能退出；
+
+## 八、线程池原理以及自定义线程池
+
+### 8.1 线程池原理
+
+1. 所谓线程池，通俗的理解就是有一个池子，里面存放着已经创建好的线程，当有任务提交给线程池执行时，池子中的某个线程会主动执行该任务；
+2. 如果池子中的线程数量不够应付数量众多的任务时， 则需要自动扩充新的线程到池子中，但是该数量是有限的；
+3. 当任务比较少的时候，池子中的线程能够自动回收，释放资源；
+
+一个完整的线程池应该具备如下要素：
+
+1. 任务队列： 用于缓存提交的任务；
+2. 线程数量管理功能： 一个线程池必须能够很好地管理和控制线程数量，可通过如下三个参数来实现，比如创建线程池时初始的线程数量init ；线程池自动扩充时最大的线程数量max ；在线程池空闲时需要释放线程但是也要维护一定数量的活跃数量或者核心数量core ；三者之间的关系是init<=core<=max；
+3. 任务拒绝策略：如果线程数量已达到上限且任务队列已满， 则需要有相应的拒绝策略来通知任务提交者；
+4. 线程工厂：主要用于个性化定制线程，比如将线程设置为守护线程以及设置线程名称等；
+5. `QueueSize`：任务队列主要存放提交的Runnable ，但是为了防止内存溢出，需要有limit 数量对其进行控制；
+6. `Keepedalive` 时间：该时间主要决定线程各个重要参数自动维护的时间间隔；
+
+### 8.2 线程池实现
+
+#### 8.2 .1 线程池接口定义
+
+1. ThreadPool
+   ThreadPool 主要定义了一个线程池应该具备的基本操作和方法
