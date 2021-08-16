@@ -110,43 +110,113 @@ public class BasicThreadPool extends Thread implements ThreadPool{
         thread.start();
     }
 
+    private void removeThread() {
+        ThreadTask threadTask = threadQueue.remove();
+        threadTask.internalTask.stop();
+        activeCount--;
+    }
+
+    @Override
+    public void run() {
+        while (!isShutdown && !isInterrupted()) {
+            try {
+                timeUnit.sleep(keepAliveTime);
+            } catch (InterruptedException e) {
+                isShutdown = true;
+                break;
+            }
+            synchronized (this) {
+                if (isShutdown) {
+                    break;
+                }
+
+                if (runnableQueue.size() > 0 && activeCount < coreSize) {
+                    for (int i = initSize; i < coreSize; i++) {
+                        newThread();
+                    }
+                    continue;
+                }
+
+                if (runnableQueue.size() > 0 && activeCount < maxSize) {
+                    for (int i = coreSize; i < maxSize; i++) {
+                        newThread();
+                    }
+                }
+
+                if (runnableQueue.size() == 0 && activeCount > coreSize) {
+                    for (int i = coreSize; i < activeCount; i++) {
+                        removeThread();
+                    }
+                }
+            }
+        }
+    }
+
     @Override
     public void execute(Runnable runnable) {
+        if (this.isShutdown) {
+            throw new IllegalStateException(" The thread pool is destroy");
+        }
 
+        this.runnableQueue.offer(runnable);
     }
 
     @Override
     public void shutdown() {
-
+        synchronized (this) {
+            if (isShutdown) {
+                return;
+            }
+            isShutdown = true;
+            threadQueue.forEach(threadTask -> {
+                threadTask.internalTask.stop();
+                threadTask.thread.interrupt();
+            });
+            this.interrupt();
+        }
     }
 
     @Override
     public int getInitsize() {
-        return 0;
+        if (isShutdown) {
+            throw new IllegalStateException ("The thread pool 工s destroy");
+        }
+        return this.initSize;
     }
 
     @Override
     public int getMaxSize() {
-        return 0;
+        if (isShutdown) {
+            throw new IllegalStateException ("The thread pool 工s destroy");
+        }
+        return this.maxSize;
     }
 
     @Override
     public int getCoreSize() {
-        return 0;
+        if (isShutdown) {
+            throw new IllegalStateException ("The thread pool 工s destroy");
+        }
+        return this.coreSize;
     }
 
     @Override
     public int getQueueSize() {
-        return 0;
+        if (isShutdown) {
+            throw new IllegalStateException ("The thread pool 工s destroy");
+        }
+        return this.runnableQueue.size();
     }
 
     @Override
     public int getActiveCount() {
-        return 0;
+        synchronized (this) {
+            return activeCount;
+        }
     }
 
     @Override
     public boolean isShutdown() {
-        return false;
+        return this.isShutdown;
     }
 }
