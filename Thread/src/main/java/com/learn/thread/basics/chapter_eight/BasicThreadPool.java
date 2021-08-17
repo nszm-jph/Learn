@@ -94,6 +94,11 @@ public class BasicThreadPool extends Thread implements ThreadPool{
         this.init();
     }
 
+    public BasicThreadPool(int initSize, int maxSize, int coreSize, int queueSize) {
+        this(initSize, maxSize, coreSize, DEFAULT_THREAD_FACTORY, queueSize,
+                DEFAULT_DENY_POLICY, 10, TimeUnit.SECONDS);
+    }
+
     private void init() {
         start();
         for (int i = 0; i < initSize; i++) {
@@ -179,7 +184,7 @@ public class BasicThreadPool extends Thread implements ThreadPool{
     @Override
     public int getInitsize() {
         if (isShutdown) {
-            throw new IllegalStateException ("The thread pool 工s destroy");
+            throw new IllegalStateException ("The thread pool is destroy");
         }
         return this.initSize;
     }
@@ -187,7 +192,7 @@ public class BasicThreadPool extends Thread implements ThreadPool{
     @Override
     public int getMaxSize() {
         if (isShutdown) {
-            throw new IllegalStateException ("The thread pool 工s destroy");
+            throw new IllegalStateException ("The thread pool is destroy");
         }
         return this.maxSize;
     }
@@ -195,7 +200,7 @@ public class BasicThreadPool extends Thread implements ThreadPool{
     @Override
     public int getCoreSize() {
         if (isShutdown) {
-            throw new IllegalStateException ("The thread pool 工s destroy");
+            throw new IllegalStateException ("The thread pool is destroy");
         }
         return this.coreSize;
     }
@@ -203,7 +208,7 @@ public class BasicThreadPool extends Thread implements ThreadPool{
     @Override
     public int getQueueSize() {
         if (isShutdown) {
-            throw new IllegalStateException ("The thread pool 工s destroy");
+            throw new IllegalStateException ("The thread pool is destroy");
         }
         return this.runnableQueue.size();
     }
