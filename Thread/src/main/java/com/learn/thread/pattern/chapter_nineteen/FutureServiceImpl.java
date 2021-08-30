@@ -32,10 +32,14 @@ public class FutureServiceImpl<IN, OUT> implements FutureService<IN, OUT>{
     }
 
     @Override
-    public Future<OUT> submit(Task<IN, OUT> task, IN input) {
+    public Future<OUT> submit(Task<IN, OUT> task, IN input, Callback<OUT> callback) {
         final FutureTask<OUT> future = new FutureTask<>();
         new Thread(() -> {
-            future.finish(task.get(input));
+            OUT result = task.get(input);
+            future.finish(result);
+            if (null != callback) {
+                callback.call(result);
+            }
         }, getNextName()).start();
         return future;
     }

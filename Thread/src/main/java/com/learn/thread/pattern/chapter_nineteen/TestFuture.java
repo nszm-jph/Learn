@@ -15,5 +15,15 @@ public class TestFuture {
             System.out.println("I am finish done.");
         });
         future.get();
+
+        FutureService<String, Integer> service = FutureService.newServer();
+        Future<Integer> submit = service.submit(input -> {
+            try {
+                TimeUnit.SECONDS.sleep(1);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            return input.length();
+        }, "Hello", System.out::println);
     }
 }

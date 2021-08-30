@@ -1,5 +1,6 @@
 package com.learn.thread.pattern.chapter_nineteen;
 
+@FunctionalInterface
 public interface Task<IN, OUT> {
     /**
      * 给定一个参数， 经过计算返回结果

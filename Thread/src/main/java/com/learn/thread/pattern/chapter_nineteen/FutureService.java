@@ -16,7 +16,7 @@ public interface FutureService<IN, OUT> {
      * @param input
      * @return
      */
-    Future<OUT> submit(Task<IN, OUT> task, IN input);
+    Future<OUT> submit(Task<IN, OUT> task, IN input, Callback<OUT> callback);
 
     /**
      * 使用静态方法创建一个FutureService 的实现
