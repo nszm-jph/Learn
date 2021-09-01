@@ -43,7 +43,7 @@ yield 方法属于一种启发式的方法，其会提醒调度器我愿意放�
 判断当前线程是否被中断，该方法仅仅是对interrupt 标识的一个判断，并不会影响标识发生任何改变
 
 ```java
-package com.learn.thread.basics.chapter_three;
+package com.learn.thread.basics.chapter_3;
 
 import java.util.concurrent.TimeUnit;
 
@@ -109,7 +109,7 @@ join 某个线程A ， 会使当前线程B 进入等待， 直到线程A 结束�
 FightQuery：不管是Thread 的run 方法，还是Runnable 接口， 都是void 返回类型，如果你想通过某个线程的运行得到结果，就需要自己定义一个返回的接口
 
 ```java
-package com.learn.thread.basics.chapter_three;
+package com.learn.thread.basics.chapter_3;
 
 import java.util.List;
 
@@ -121,7 +121,7 @@ public interface FightQuery {
 FightQueryTask：其实就是一个线程的子类，主要用于到各大航空公司获取数据
 
 ```java
-package com.learn.thread.basics.chapter_three;
+package com.learn.thread.basics.chapter_3;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -164,7 +164,7 @@ public class FightQueryTask extends Thread implements FightQuery {
 
 
 ```java
-package com.learn.thread.basics.chapter_three;
+package com.learn.thread.basics.chapter_3;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -446,7 +446,7 @@ public class EventClient {
 Lock接口：
 
 ```java
-package com.learn.thread.basics.chapter_five;
+package com.learn.thread.basics.chapter_5;
 
 import java.util.List;
 import java.util.concurrent.TimeoutException;
@@ -466,7 +466,7 @@ public interface Lock {
 BooleanLock：
 
 ```java
-package com.learn.thread.basics.chapter_five;
+package com.learn.thread.basics.chapter_5;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -474,7 +474,6 @@ import java.util.List;
 import java.util.concurrent.TimeoutException;
 
 import static java.lang.System.currentTimeMillis;
-import static java.lang.System.in;
 
 public class BooleanLock implements Lock{
 
@@ -569,7 +568,7 @@ public class BooleanLock implements Lock{
 上述两个方法，会将Thread Group 中的active 线程全部复制到Thread 数组中，其中recurse 参数如果为true ， 则该方法会将所有子group 中的active线程都递归到Thread 数组中， enumerate ( Thread[] list ）实际上等价于enumerate (Thread[] true )；
 
 ```java
-package com.learn.thread.basics.chapter_six;
+package com.learn.thread.basics.chapter_6;
 
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
@@ -663,7 +662,7 @@ destroy 用于销毁Thread Group ， 该方法只是针对一个没有任何acti
 当线程在运行过程中出现异常时，会回调`UncaughtExceptionHandler`接口，从而得知是哪个线程在运行时出错，`UncaughtExceptionHandler `是一个`Functionallnterface `，只有一个抽象方法，该回调接口会被Thread 中的`dispatchUncaughtException `方法调用
 
 ```java
-package com.learn.thread.basics.chapter_seven;
+package com.learn.thread.basics.chapter_7;
 
 import java.util.concurrent.TimeUnit;
 
@@ -695,7 +694,7 @@ public class CaptureThreadException {
 JVM 进程的退出是由于JVM 进程中没有活跃的非守护线程，或者收到了系统中断信号，向JVM 程序注入一个Hook 线程，在JVM 进程退出的时候， Hook 线程会启动执行，通过Runtime 可以为JVM 注入多个Hook 线程
 
 ```java
-package com.learn.thread.basics.chapter_seven;
+package com.learn.thread.basics.chapter_7;
 
 import java.util.concurrent.TimeUnit;
 
@@ -731,7 +730,7 @@ public class ThreadHook {
 在我们的开发中经常会遇到Hook 线程，比如为了防止某个程序被重复启动，在进程启动时会创建一个lock 文件，进程收到中断信号的时候会删除这个lock 文件，我们在mysql服务器、zoo keeper 、kafka 等系统中都能看到lock 文件的存在，本节中，将利用hook 线程的特点，模拟一个防止重复启动的程序;
 
 ```java
-package com.learn.thread.basics.chapter_seven;
+package com.learn.thread.basics.chapter_7;
 
 import java.io.IOException;
 import java.nio.file.Files;
